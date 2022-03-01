@@ -916,7 +916,7 @@ contract CryptoFligthManager is Ownable{
     mapping(address => uint256 ) public invested;
     mapping( address => bool ) public approvedBuyers;
     uint256 tofee = 1;
-    uint256 totreasury = 99;
+    uint256 totreasury = 199;
     ERC20 BUSD;
 
     constructor( 
@@ -986,8 +986,8 @@ contract CryptoFligthManager is Ownable{
         require(amount + invested[msg.sender] >= MIN_PER_ACCOUNT, "amount is not sufficient");
         require(amount <= amountBuyable(msg.sender), "amount exceeds buyable amount");
         address payable treasuryFundAddress = payable(treasuryFund);
-        BUSD.safeTransferFrom( msg.sender, address(feeAdd), amount * (SALE_PRICE * tofee / 100 / 2)); 
-        BUSD.safeTransferFrom( msg.sender, address(treasuryFundAddress), amount * (SALE_PRICE * totreasury / 100));      
+        BUSD.safeTransferFrom( msg.sender, address(feeAdd), amount * (SALE_PRICE * tofee / 100) / 2); 
+        BUSD.safeTransferFrom( msg.sender, address(treasuryFundAddress), amount * (SALE_PRICE * totreasury / 100) / 2);      
         invested[msg.sender] += amount;
         sold += amount;
         owed += amount;
