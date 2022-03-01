@@ -1,0 +1,460 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" charset="utf-8">
+	<title>CFM TESTNET</title>
+	<link rel="stylesheet" type="text/css" href="style.css?5">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@200;300;400;600;700&display=swap" rel="stylesheet">
+	<script src="https://kit.fontawesome.com/25c51d0b7a.js" crossorigin="anonymous"></script>
+	<link rel="icon" href="images/logo/perfect1.png"> 
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+	<script src="./bignumber.min.js"></script>
+</head>
+<body>
+	<div id="app" v-cloak>
+		<!-- <div id="video-container">
+			<video poster="./images/1111.png" autoplay muted loop id="video">
+				<source src="./images/looped.mp4" type="video/mp4"/>
+			</video>
+		</div> -->
+
+		<section class="header" id="home">
+			<nav>
+				<div class="login">
+					<ul>
+						<div class="btn2" v-show="account">
+							<div class="hero-btn2">{{ busdBalanceRounded ? busdBalanceRounded : '0' }} BUSD</div>
+							<div class="hero-btn2">{{ tinyAccount }}</div>
+							<a :href="'https://testnet.bscscan.com/address/' + presale.address" target="_blank" class="hero-btn2">Presale Contract</a>
+						</div>
+					</ul>
+				</div>
+			</nav>
+
+		
+
+			<div class="text-box-wrapper">
+			    <h1><img src="./images/logo.png" alt="Your Logo" height="250" width="250"></h1>
+				<div class="text-box">
+					<p>You are approaching the Plane...</p>
+					<p>Any text you want.</p>
+					<p>The Token welcomes you, just as you have welcomed others.</p>
+					<p>Deposit your Binance USD (BUSD) into the Token's vault. You will be able to claim and stake your <strong> CFM </strong> at the beginning of our Launch Event.</p>
+					<p style="margin-bottom: 3rem;"> To the moon.</p>
+					<!-- <p>Deposit your BUSD in exchange for CFM cfms.<br>Your Tokens will be available for claim just after the PRESALE.<br></p> -->
+					<div class="text-center">
+						<a class="hero-btn2 connect-btn" @click.prevent="connect" v-if="!account">Connect to MetaMask</a>	
+					</div>
+					<div v-if="account" class="wrapper">
+						<div v-if="loading" class="loader">
+							Loading, please wait...
+						</div>
+						<div v-else>
+							<div class="progress-text">Amount sold: {{ amountSoldRounded }} / {{ presale.maxSold }} CRYPTO FLIGHT MANAGER (CFM)</div>
+							<div class="progress">
+								<div class="progress-value" :style="{ width: (presale.sold / presale.maxSold * 100) + '%' }"></div>
+							</div>
+							<div v-if="presale.amountBuyable > 0">
+								<div class="text-center" v-show="!busd.approved && presale.deposited <= 0">
+									<a class="hero-btn1 approve-btn" @click.prevent="approve"><span>Approve BUSD</span> <img src="images/logo/busd.png" height="20" width="20"></a>
+								</div>
+								<div id="deposit-box" v-show="busd.approved && presale.amountBuyable > 0">
+									<div class="deposit-box-details">
+										<div>BUSD remaining you can use to buy CFM: <a style="color:inherit;" href="#" @click.prevent="amountToDeposit = currentMaxPerAccountRounded">{{ currentMaxPerAccountRounded }}</a><br>(*Minimun deposit is 10 BUSD)</br></div>
+										
+										<div>Price: 0.5 BUSD / CFM</div>
+									</div>
+									<div class="input-container">
+										<input type="number" step="1" min="0" :max="currentMaxPerAccountRounded" placeholder="BUSD Amount" v-model.number="amountToDeposit"/>
+										<a class="hero-btn" @click.prevent="deposit" :class="'deposit-btn ' + (amountToDeposit <= 0 ? 'disabled' : '')"><span>Deposit {{ amountToDeposit ? amountToDepositRounded : '0' }} BUSD </span><img src="images/logo/busd.png" height="20" width="20"></a>
+									</div>
+								</div>
+							</div>
+							<!-- <div v-else-if="!presale.isWhitelisted">
+								<div class="errors">
+									The PRESALE is not open to the public.
+								</div>
+							</div>
+							<div v-else>
+								<div class="errors">
+									The sale is not opened
+								</div>
+							</div>
+							<div class="errors" v-else>
+								The sale is not opened
+							</div>-->
+							<div v-if="presale.deposited > 0">
+								<div v-if="presale.cfmAddress != '0x0000000000000000000000000000000000000000'" class="text-center claim-container">
+									<a class="hero-btn" href="#" @click.prevent="claim">Claim {{ Math.round(presale.deposited * 100) / 100 }} CFM</a>
+								</div>
+								<div v-else class="text-center claim-container">
+									<a class="hero-btn disabled" href="#" title="Your Tokens will be available for claim just after the STAKING APP LAUNCH." @click.prevent>Claim {{ Math.round(presale.deposited * 100) / 100 }} CFM</a>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+		</div>
+		</section>
+		
+		<div id="errors" v-show="error" v-html="error"></div>
+		<div id="success" v-show="success" v-html="success"></div>
+	</div>
+
+	<script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+	<script>
+		if (($(document).width() / $(document).height()) < (16 / 9)) {
+			$('video').css({
+				width: 'auto',
+				height: '100%',
+			})
+		} else {
+			$('video').css({
+				height: 'auto',
+				width: '100%',
+			})
+		}
+
+		$(window).on('resize', function () {
+			if (($(document).width() / $(document).height()) < (16 / 9)) {
+				$('video').css({
+					width: 'auto',
+					height: '100%',
+				})
+			} else {
+				$('video').css({
+					height: 'auto',
+					width: '100%',
+				})
+			}
+		})
+
+		var vm = new Vue({
+			el: '#app',
+			data: {
+				test: false,
+
+				loading: true,
+				error: null,
+				success: null,
+				web3: null,
+
+				account: null,
+				cfmDecimals: 9,
+				amountToDeposit: '',
+
+				busd: {
+					balance: 0,
+					approved: 0,
+					decimals: 18,
+					address: '0x78867BbEeF44f2326bF8DDd1941a4439382EF2A7',
+					contract: null,
+					abi: [{"inputs":[{"internalType":"string","name":"_name","type":"string"},{"internalType":"string","name":"_symbol","type":"string"},{"internalType":"uint8","name":"_decimals","type":"uint8"},{"internalType":"address","name":"_underlying","type":"address"},{"internalType":"address","name":"_vault","type":"address"}],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"owner","type":"address"},{"indexed":true,"internalType":"address","name":"spender","type":"address"},{"indexed":false,"internalType":"uint256","name":"value","type":"uint256"}],"name":"Approval","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"auth","type":"address"},{"indexed":false,"internalType":"uint256","name":"timestamp","type":"uint256"}],"name":"LogAddAuth","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"oldOwner","type":"address"},{"indexed":true,"internalType":"address","name":"newOwner","type":"address"},{"indexed":true,"internalType":"uint256","name":"effectiveHeight","type":"uint256"}],"name":"LogChangeMPCOwner","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"oldVault","type":"address"},{"indexed":true,"internalType":"address","name":"newVault","type":"address"},{"indexed":true,"internalType":"uint256","name":"effectiveTime","type":"uint256"}],"name":"LogChangeVault","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"bytes32","name":"txhash","type":"bytes32"},{"indexed":true,"internalType":"address","name":"account","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"LogSwapin","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"account","type":"address"},{"indexed":true,"internalType":"address","name":"bindaddr","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"LogSwapout","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"from","type":"address"},{"indexed":true,"internalType":"address","name":"to","type":"address"},{"indexed":false,"internalType":"uint256","name":"value","type":"uint256"}],"name":"Transfer","type":"event"},{"inputs":[],"name":"DOMAIN_SEPARATOR","outputs":[{"internalType":"bytes32","name":"","type":"bytes32"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"PERMIT_TYPEHASH","outputs":[{"internalType":"bytes32","name":"","type":"bytes32"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"bytes32","name":"txhash","type":"bytes32"},{"internalType":"address","name":"account","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"Swapin","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"amount","type":"uint256"},{"internalType":"address","name":"bindaddr","type":"address"}],"name":"Swapout","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"TRANSFER_TYPEHASH","outputs":[{"internalType":"bytes32","name":"","type":"bytes32"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"},{"internalType":"address","name":"","type":"address"}],"name":"allowance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"applyMinter","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"applyVault","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"value","type":"uint256"}],"name":"approve","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"value","type":"uint256"},{"internalType":"bytes","name":"data","type":"bytes"}],"name":"approveAndCall","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"balanceOf","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"from","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"burn","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"newVault","type":"address"}],"name":"changeMPCOwner","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"newVault","type":"address"}],"name":"changeVault","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"decimals","outputs":[{"internalType":"uint8","name":"","type":"uint8"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"delay","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"delayDelay","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"delayMinter","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"delayVault","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"amount","type":"uint256"},{"internalType":"address","name":"to","type":"address"}],"name":"deposit","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"deposit","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"deposit","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"amount","type":"uint256"},{"internalType":"address","name":"to","type":"address"}],"name":"depositVault","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"target","type":"address"},{"internalType":"uint256","name":"value","type":"uint256"},{"internalType":"uint256","name":"deadline","type":"uint256"},{"internalType":"uint8","name":"v","type":"uint8"},{"internalType":"bytes32","name":"r","type":"bytes32"},{"internalType":"bytes32","name":"s","type":"bytes32"},{"internalType":"address","name":"to","type":"address"}],"name":"depositWithPermit","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"target","type":"address"},{"internalType":"uint256","name":"value","type":"uint256"},{"internalType":"uint256","name":"deadline","type":"uint256"},{"internalType":"uint8","name":"v","type":"uint8"},{"internalType":"bytes32","name":"r","type":"bytes32"},{"internalType":"bytes32","name":"s","type":"bytes32"},{"internalType":"address","name":"to","type":"address"}],"name":"depositWithTransferPermit","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"getAllMinters","outputs":[{"internalType":"address[]","name":"","type":"address[]"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"_vault","type":"address"}],"name":"initVault","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"isMinter","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"mint","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"minters","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"mpc","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"name","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"nonces","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"pendingDelay","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"pendingMinter","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"pendingVault","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"target","type":"address"},{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"value","type":"uint256"},{"internalType":"uint256","name":"deadline","type":"uint256"},{"internalType":"uint8","name":"v","type":"uint8"},{"internalType":"bytes32","name":"r","type":"bytes32"},{"internalType":"bytes32","name":"s","type":"bytes32"}],"name":"permit","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"_auth","type":"address"}],"name":"revokeMinter","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"_auth","type":"address"}],"name":"setMinter","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"_vault","type":"address"}],"name":"setVault","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"bool","name":"enabled","type":"bool"}],"name":"setVaultOnly","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"symbol","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"totalSupply","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"value","type":"uint256"}],"name":"transfer","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"value","type":"uint256"},{"internalType":"bytes","name":"data","type":"bytes"}],"name":"transferAndCall","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"from","type":"address"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"value","type":"uint256"}],"name":"transferFrom","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"target","type":"address"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"value","type":"uint256"},{"internalType":"uint256","name":"deadline","type":"uint256"},{"internalType":"uint8","name":"v","type":"uint8"},{"internalType":"bytes32","name":"r","type":"bytes32"},{"internalType":"bytes32","name":"s","type":"bytes32"}],"name":"transferWithPermit","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"underlying","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"vault","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"amount","type":"uint256"},{"internalType":"address","name":"to","type":"address"}],"name":"withdraw","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"withdraw","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"withdraw","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"from","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"},{"internalType":"address","name":"to","type":"address"}],"name":"withdrawVault","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"nonpayable","type":"function"}],
+				},
+
+
+				presale: {
+					address: '0x4E513Da78A2b7d5cbEaff8A22f4D3d696Ab03A7d',
+					contract: null,
+					abi: [{"inputs":[],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"previousOwner","type":"address"},{"indexed":true,"internalType":"address","name":"newOwner","type":"address"}],"name":"OwnershipTransferred","type":"event"},{"inputs":[],"name":"CFM","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"MAX_PRESALE_PER_ACCOUNT","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"MAX_SOLD","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"MIN_PRESALE_PER_ACCOUNT","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"OLD_CONTRACT_ADDRESS","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"PRICE","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"activatePrivateSale","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"buyer","type":"address"}],"name":"amountBuyable","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"newBuyer_","type":"address"}],"name":"approveBuyer","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address[]","name":"newBuyers_","type":"address[]"}],"name":"approveBuyers","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"approvedBuyers","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"badBuyer_","type":"address"}],"name":"blacklistBuyer","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address[]","name":"badBuyers_","type":"address[]"}],"name":"blacklistBuyers","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"blacklisted","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"buyCFM","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"claimCFM","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"claimed","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"deactivatePrivateSale","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"newBuyer_","type":"address"}],"name":"deapproveBuyer","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"dev","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"invested","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"renounceOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"cfm","type":"address"}],"name":"setClaimingActive","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"_soldAmount","type":"uint256"}],"name":"setSold","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"sold","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"newOwner","type":"address"}],"name":"transferOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"_cfm","type":"address"}],"name":"withdraw","outputs":[],"stateMutability":"nonpayable","type":"function"}],
+				},
+
+				maxUint: null,
+			},
+			computed: {
+				amountSoldRounded () {
+					if ( ! this.presale.sold) {
+						return 0;
+					}
+
+					return Math.round(this.presale.sold * 100) / 100
+				},
+				amountToDepositRounded () {
+					return Math.round(this.amountToDeposit * 100) / 100
+				},
+				currentMaxPerAccountRounded () {
+					return Math.round(this.currentMaxPerAccount * 100) / 100
+				},
+				currentMaxPerAccount () {
+					const price = this.toBN(this.presale.price)
+					const max = this.toBN(this.presale.maxPreSalePerAccount)
+
+					const cfmPow = this.toBN(10).pow(this.toBN(this.cfmDecimals))
+					const busdPow = this.toBN(10).pow(this.toBN(this.busd.decimals))
+
+					const amountFtlBuyable = this.presale.amountBuyable
+					let amountBusdDepositable = 0
+					if (amountFtlBuyable == 0) {
+						amountBusdDepositable = 0;
+					} else {
+						amountBusdDepositable = this.toBN(amountFtlBuyable).times(price).div(busdPow.div(cfmPow)).toNumber()
+					}
+
+					return amountBusdDepositable;
+
+					return max.times(price).div(busdPow.div(cfmPow)).toNumber()
+				},
+				tinyAccount () {
+					if ( ! this.account) {
+						return ''
+					}
+					return this.account.substr(0, 6) + '..' + this.account.substr(-6)
+				},
+				busdBalanceRounded () {
+					if (this.busd.balance <= 0) {
+						return 0
+					}
+
+					return this.toBN(this.busd.balance).toFixed(2)
+				},
+			},
+			created () {
+				this.web3 = new Web3(Web3.givenProvider)
+				this.maxUint = this.toBN('115792089237316195423570985008687907853269984665640564039457584007913129639935')
+
+				this.busd.contract = new this.web3.eth.Contract(this.busd.abi, this.busd.address)
+				this.presale.contract = new this.web3.eth.Contract(this.presale.abi, this.presale.address)
+				this.connect()
+
+				setInterval(() => {
+					this.fetchSaleInfos()
+					this.fetchMimBalance()
+					this.fetchDeposited()
+				}, 1000)
+
+				ethereum.on('accountsChanged', (accounts) => {
+					this.connect()
+				});
+			},
+			watch: {
+				amountToDeposit (newVal, oldVal) {
+					if (newVal > this.currentMaxPerAccount) {
+						this.amountToDeposit = oldVal
+					}
+				}
+			},
+			methods: {
+				async connect () {
+					const chainId = await this.web3.eth.getChainId()
+
+					const requiredChainId = this.test ? 97 : 97;
+
+					if (chainId != requiredChainId) {
+						this.switchChain()
+						return
+					}
+
+					ethereum.request({ method: 'eth_requestAccounts' }).then((accounts) => {
+						this.account = accounts[0]
+						this.onConnect()
+					})
+				},
+				async switchChain () {
+					await window.ethereum.request({
+						method: "wallet_addEthereumChain",
+						params: [{
+							chainId: this.test ? '0x61' : "0x61",
+							chainName: this.test ? 'BSC Testnet' : "BSC Testnet",
+							rpcUrls: [this.test ? 'https://speedy-nodes-nyc.moralis.io/2eef56c887b28c484654dbb1/bsc/testnet' : 'https://speedy-nodes-nyc.moralis.io/2eef56c887b28c484654dbb1/bsc/testnet'],
+							nativeCurrency: {
+								name: "BNB",
+								symbol: "BNB",
+								decimals: 18,
+							},
+							blockExplorerUrls: [this.test ? "https://testnet.bscscan.com/" : "https://testnet.bscscan.com/"],
+						}],
+					});
+					this.connect()
+				},
+				async onConnect () {
+					this.loading = true
+					
+					Promise.all([
+						this.fetchSaleInfos(),
+						this.fetchMimBalance(),
+						this.fetchDeposited(),	
+					]).then(() => {
+						this.fetchAllowance().then(() => {
+							this.loading = false
+						})
+					})
+				},
+				async fetchSold () {
+					this.presale.contract.methods.sold().call().then((sold) => {
+						Vue.set(this.presale, 'sold', parseFloat(this.applyDecimals(sold, this.cfmDecimals)))
+					})
+				},
+				async fetchSaleInfos () {
+					return new Promise((resolve) => {
+						Promise.all([
+							this.presale.contract.methods.PRICE().call(),
+							this.presale.contract.methods.MAX_PRESALE_PER_ACCOUNT().call().then((val) => {
+								return parseFloat(this.applyDecimals(val, this.cfmDecimals))
+							}),
+							this.presale.contract.methods.amountBuyable(this.account).call().then((val) => {
+								return parseFloat(this.applyDecimals(val, this.cfmDecimals))
+							}),
+							this.presale.contract.methods.approvedBuyers(this.account).call(),
+							this.presale.contract.methods.MAX_SOLD().call().then((maxSold) => {
+								return parseFloat(this.applyDecimals(maxSold, this.cfmDecimals))
+							}),
+							this.presale.contract.methods.sold().call().then((sold) => {
+								return parseFloat(this.applyDecimals(sold, this.cfmDecimals))
+							}),
+							this.presale.contract.methods.CFM().call(),
+						]).then((infos) => {
+							Vue.set(this.presale, 'price', infos[0])
+							Vue.set(this.presale, 'maxPreSalePerAccount', infos[1])
+							Vue.set(this.presale, 'amountBuyable', infos[2])
+							Vue.set(this.presale, 'isWhitelisted', infos[3])
+							Vue.set(this.presale, 'maxSold', infos[4])
+							Vue.set(this.presale, 'sold', infos[5])
+							Vue.set(this.presale, 'cfmAddress', infos[6])
+							resolve()
+						})
+					})
+				},
+				async fetchAllowance () {
+					const buyableFtl = this.toBN(this.removeDecimals(this.presale.amountBuyable, this.cfmDecimals))
+					const mustBeApproved = buyableFtl.times(this.presale.price)
+					const approved = await this.busd.contract.methods.allowance(this.account, this.presale.address).call()
+					this.busd.approved = this.toBN(approved).gte(mustBeApproved)
+				},
+				async fetchMimBalance () {
+					const value = await this.busd.contract.methods.balanceOf(this.account).call()
+					Vue.set(this.busd, 'balance', this.applyDecimals(value, this.busd.decimals))
+				},
+				async fetchDeposited () {
+					const newValue = await this.presale.contract.methods.invested(this.account).call()
+					const value = newValue;
+
+					Vue.set(this.presale, 'deposited', this.applyDecimals(value, this.cfmDecimals))
+				},
+				toBN (val) {
+					return new BigNumber(val)
+				},
+				removeDecimals (val, decimals) {
+					return new BigNumber(val).times(new BigNumber(10).pow(new BigNumber(decimals))).toString()
+				},
+				applyDecimals (val, decimals) {
+					if (this.toBN(val).isZero()) {
+						return 0;
+					}
+
+					return new BigNumber(val).div(new BigNumber(10).pow(new BigNumber(decimals))).toString()
+				},
+				async approve () {
+					const maxFtl = this.toBN(this.removeDecimals(this.presale.maxPreSalePerAccount, this.cfmDecimals))
+					const busdAmount = maxFtl.times(this.presale.price).toFixed(0)
+
+					this.sendTx({
+						to: this.busd.address,
+						data: this.web3.eth.abi.encodeFunctionCall({
+							name: 'approve',
+							type: 'function',
+							inputs: [{
+								type: 'address',
+								name: 'spender'
+							}, {
+								type: 'uint256',
+								name: 'value'
+							}]
+						}, [this.presale.address, busdAmount])
+					}).then(() => {
+						this.busd.approved = true
+					})
+				},
+				async deposit () {
+					const busdToDeposit = this.toBN(this.removeDecimals(this.amountToDeposit, this.busd.decimals))
+					const cfmToDeposit = busdToDeposit.div(this.toBN(this.presale.price)).toFixed(0)
+					const cfmToDepositReadable = this.applyDecimals(cfmToDeposit, this.cfmDecimals)
+
+					this.sendTx({
+						to: this.presale.address,
+						data: this.web3.eth.abi.encodeFunctionCall({
+							name: 'buyCFM',
+							type: 'function',
+							inputs: [{
+								type: 'uint256',
+								name: 'amount'
+							}]
+						}, [cfmToDeposit])
+					}).then(() => {
+						this.amountToDeposit = ''
+					})
+				},
+				async claim () {
+					this.sendTx({
+						to: this.presale.address,
+						data: this.web3.eth.abi.encodeFunctionSignature('claimCFM()')
+					}).then(() => {
+						this.fetchDeposited()
+					})
+				},
+				setMaxDepositAmount () {
+					this.amountToDeposit = this.maxDepositAmountForAccount
+				},
+				async sendTx (params) {
+					params.from = this.account
+					return new Promise((resolve, reject) => {
+						ethereum.request({
+							method: 'eth_sendTransaction',
+							params: [params],
+						})
+						.then((txHash) => {
+							this.setMessage(`Transaction sent (Please Wait...): <a href="https://testnet.bscscan.com/tx/${txHash}" target="_blank">view transaction</a>`, 0)
+
+							const wait = () => {
+								this.web3.eth.getTransaction(txHash).then((tx) => {
+									if (tx.blockNumber === null) {
+										setTimeout(() => wait(), 1000)
+										return
+									}
+
+									this.setMessage(`Transaction successful!`)
+
+									resolve(tx)
+								})
+							}
+
+							wait();
+						})
+						.catch((err) => {
+							this.setError(err.message)
+							reject(err)
+						})
+					})
+				},
+				setError (msg) {
+					this.error = msg
+					this.success = null
+
+					setTimeout(() => {
+						this.error = null
+					}, 5000)
+				},
+				setMessage (msg, timeout = 5000) {
+					this.error = null
+					this.success = msg
+
+					if (timeout === 0) {
+						return
+					}
+
+					setTimeout(() => {
+						this.success = null
+					}, timeout)
+				}
+			}
+		})
+				
+	</script>
+	
+
+    
+</body>
+</html>
